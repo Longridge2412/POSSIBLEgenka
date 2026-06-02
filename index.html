@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POSSIBLE COFFEE 原価計算</title>
+<style>
+  :root{
+    --bg:#f7f6f3;--panel:#fff;--panel2:#fafaf8;--line:#e3e0d8;--line2:#eeece6;
+    --ink:#1c2433;--muted:#7b8290;--navy:#1f3a5f;--navy-d:#16293f;--navy-tint:#eef2f7;
+    --teal:#2c6e6b;--teal-tint:#e9f1f0;
+    --good:#2f7a4d;--warn:#b5742a;--bad:#c0432f;--radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif;line-height:1.65;padding:0 0 90px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  header{padding:36px 0 22px;border-bottom:2px solid var(--navy);margin-bottom:18px}
+  .brand{letter-spacing:.32em;font-size:12px;font-weight:700;color:var(--navy)}
+  h1{font-family:"Hiragino Mincho ProN","Yu Mincho",serif;font-size:30px;font-weight:600;margin-top:8px;letter-spacing:.04em}
+  .sub{color:var(--muted);font-size:14px;margin-top:8px}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px;margin-bottom:22px;box-shadow:0 1px 2px rgba(28,36,51,.04)}
+  .sec-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .sec-num{background:var(--navy);color:#fff;font-size:12px;font-weight:700;letter-spacing:.1em;width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .sec-num.teal{background:var(--teal)}
+  h2{font-size:18px;font-weight:700;letter-spacing:.04em}
+  .hint{color:var(--muted);font-size:13px;margin-bottom:14px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600}
+  input,select,textarea{width:100%;background:#fff;border:1px solid var(--line);border-radius:7px;color:var(--ink);padding:9px 11px;font-size:14px;font-family:inherit}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px var(--navy-tint)}
+  input[type=number]{text-align:right}
+  button{cursor:pointer;font-family:inherit;border:none;border-radius:7px;font-size:13px;padding:9px 16px;transition:.15s}
+  .btn-primary{background:var(--navy);color:#fff;font-weight:700}
+  .btn-primary:hover{background:var(--navy-d)}
+  .btn-teal{background:var(--teal);color:#fff;font-weight:700}
+  .btn-teal:hover{filter:brightness(.92)}
+  .btn-ghost{background:#fff;border:1px solid var(--line);color:var(--navy);font-weight:600}
+  .btn-ghost:hover{border-color:var(--navy);background:var(--navy-tint)}
+  .btn-x{background:transparent;color:var(--muted);padding:4px 8px;font-weight:600}
+  .btn-x:hover{color:var(--bad)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;font-size:11px;color:var(--muted);font-weight:700;padding:8px 10px;border-bottom:2px solid var(--line);letter-spacing:.04em}
+  td{padding:8px 10px;border-bottom:1px solid var(--line2);font-size:14px;vertical-align:middle}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+  .mat-row td input,.mat-row td select{padding:6px 8px;font-size:13px}
+  .grid-add{display:grid;grid-template-columns:1.6fr 1fr 1fr .9fr auto;gap:10px;align-items:end;margin-bottom:14px}
+  .grid-recipe{display:grid;grid-template-columns:2fr 1fr auto;gap:10px;align-items:end;margin-bottom:10px}
+  .row2{display:grid;grid-template-columns:1fr 160px;gap:14px;align-items:end;margin-bottom:16px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:end;margin-bottom:16px}
+  .empty{color:var(--muted);font-size:13px;padding:16px;text-align:center;background:var(--panel2);border-radius:8px}
+  .results{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:4px}
+  .card{background:var(--navy-tint);border:1px solid #d9e1eb;border-radius:var(--radius);padding:18px}
+  .card.hero{background:var(--navy);border-color:var(--navy)}
+  .card.hero .k{color:#aebfd2}.card.hero .v{color:#fff}.card.hero .v .u{color:#aebfd2}
+  .card .k{font-size:11px;color:var(--navy);letter-spacing:.08em;font-weight:700}
+  .card .v{font-size:27px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums}
+  .card .v .u{font-size:14px;color:var(--muted);margin-left:3px}
+  .ratio-good{color:var(--good)!important}.ratio-warn{color:var(--warn)!important}.ratio-bad{color:var(--bad)!important}
+  .ai-box{background:var(--navy-tint);border:1px solid #d9e1eb;border-radius:8px;padding:16px;margin-bottom:18px}
+  .ai-box .hint{margin-bottom:10px;color:var(--navy);font-weight:600}
+  .ai-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+  .ai-note{font-size:12px;color:var(--muted);margin-top:8px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:11px 22px;border-radius:8px;font-size:13px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:50;box-shadow:0 6px 20px rgba(28,36,51,.2);max-width:90%;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:var(--bad)}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .tag-prep{display:inline-block;background:var(--teal-tint);color:var(--teal);font-size:10px;font-weight:700;padding:1px 7px;border-radius:4px;margin-left:6px;vertical-align:1px}
+  .setting-bar{background:var(--teal-tint);border:1px solid #cfe0df;border-radius:8px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .setting-bar label{margin:0;color:var(--teal)}
+  .setting-bar input{width:120px}
+  /* sync bar */
+  .syncbar{position:sticky;top:0;z-index:30;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-bottom:22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(28,36,51,.06)}
+  .sync-status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-right:auto}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .dot.clean{background:var(--good)}.dot.dirty{background:var(--warn)}.dot.off{background:#bbb}
+  .breakdown{font-size:12px;color:var(--muted);margin-top:10px}
+  .spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:-2px;margin-right:6px}
+  .spinner.dark{border-color:rgba(31,58,95,.3);border-top-color:var(--navy)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .setup{background:#fff7ec;border:1px solid #e8d3a8;border-radius:10px;padding:16px;margin-bottom:22px}
+  .setup input{margin-top:6px}
+  @media(max-width:760px){
+    .results{grid-template-columns:repeat(2,1fr)}
+    .grid-add{grid-template-columns:1fr 1fr;gap:8px}
+    .grid-recipe{grid-template-columns:1fr 80px auto}
+    .row2,.row3{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">POSSIBLE COFFEE</div>
+    <h1>原価計算シート</h1>
+    <div class="sub">材料・仕込み品を登録 → レシピを組む → 労務込みの原価・粗利が自動で出る。データはGoogleスプレッドシートで2人共有。</div>
+  </header>
+
+  <!-- 初回のみ：GAS URL設定 -->
+  <div class="setup" id="setup-box">
+    <div class="hint" style="font-weight:700;color:var(--ink);margin-bottom:4px">初回設定：GASのWeb App URL</div>
+    <div class="hint" style="margin:0">スプレッドシートに紐づけたGASをデプロイして得たURLを貼ってください。一度設定すればこの端末に記憶されます（2人それぞれの端末で1回ずつ設定）。</div>
+    <div class="ai-row" style="margin-top:8px">
+      <div><input id="gas-url" placeholder="https://script.google.com/macros/s/.../exec"></div>
+      <div><button class="btn-primary" onclick="saveGasUrl()">保存して接続</button></div>
+    </div>
+  </div>
+
+  <!-- 同期バー -->
+  <div class="syncbar" id="syncbar" style="display:none">
+    <span class="sync-status"><span class="dot off" id="sync-dot"></span><span id="sync-text">未読み込み</span></span>
+    <button class="btn-ghost" id="btn-reload" onclick="loadFromSheet()">最新を読み込む</button>
+    <button class="btn-primary" id="btn-save" onclick="saveToSheet()">スプレッドシートに保存</button>
+  </div>
+
+  <div class="setting-bar">
+    <label>時給(円)</label>
+    <input id="wage" type="number" value="1000" oninput="markDirty()">
+    <span class="hint" style="margin:0">仕込み・提供の作業時間×この時給を労務費として原価に乗せます。</span>
+  </div>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>材料マスタ</h2></div>
+    <div class="hint">買った単位で登録すれば、1g・1ml・1個あたりの単価を自動計算します。</div>
+    <div class="grid-add">
+      <div><label>材料名</label><input id="m-name" placeholder="例：牛乳"></div>
+      <div><label>購入価格(円)</label><input id="m-price" type="number" placeholder="220"></div>
+      <div><label>購入量</label><input id="m-qty" type="number" placeholder="1000"></div>
+      <div><label>単位</label><select id="m-unit"><option>g</option><option>ml</option><option>個</option><option>枚</option><option>杯</option></select></div>
+      <div><button class="btn-primary" onclick="addMaterial()">追加</button></div>
+    </div>
+    <table><thead><tr><th>材料名</th><th>購入価格</th><th>購入量</th><th>単位あたり単価</th><th></th></tr></thead><tbody id="mat-body"></tbody></table>
+    <div id="mat-empty" class="empty">まだ材料がありません。</div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num teal">02</span><h2>仕込み品（中間材料）</h2></div>
+    <div class="hint">カフェラテベース・チャイベース・焙煎豆など。1回仕込む材料と作業時間を入れ、できあがり量で割って単価化します。焙煎の目減りは「できあがり量」を実際の焼き上がりg数にすればOK。</div>
+    <div class="row3">
+      <div><label>仕込み品名</label><input id="p-name" placeholder="例：チャイベース"></div>
+      <div><label>できあがり量</label><input id="p-yield" type="number" placeholder="2000"></div>
+      <div><label>単位</label><select id="p-unit"><option>ml</option><option>g</option><option>個</option><option>杯</option></select></div>
+    </div>
+    <div class="row2"><div><label>仕込み作業時間(分)</label><input id="p-min" type="number" placeholder="90"></div><div></div></div>
+    <div class="hint" style="color:var(--teal);font-weight:600">この仕込みに使う材料を追加：</div>
+    <div class="grid-recipe">
+      <div><label>材料を選ぶ</label><select id="p-mat"></select></div>
+      <div><label>使用量</label><input id="p-amt" type="number" placeholder="500"></div>
+      <div><button class="btn-teal" onclick="addPrepLine()">行追加</button></div>
+    </div>
+    <table><thead><tr><th>材料</th><th>使用量</th><th>金額</th><th></th></tr></thead><tbody id="prep-line-body"></tbody></table>
+    <div id="prep-line-empty" class="empty">この仕込みの材料がまだありません。</div>
+    <div class="breakdown" id="prep-preview"></div>
+    <div class="toolbar">
+      <button class="btn-teal" onclick="savePrep()">仕込み品を登録</button>
+      <button class="btn-ghost" onclick="clearPrep()">クリア</button>
+    </div>
+    <div style="margin-top:22px">
+      <div class="hint" style="font-weight:700;color:var(--ink)">登録済みの仕込み品</div>
+      <table><thead><tr><th>仕込み品</th><th>材料費</th><th>労務費</th><th>総コスト</th><th>単価</th><th></th></tr></thead><tbody id="prep-body"></tbody></table>
+      <div id="prep-empty" class="empty">登録済みの仕込み品はありません。</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>販売レシピ</h2></div>
+    <div class="ai-box">
+      <div class="hint">AI入力補助：商品名やレシピを文章で書くと材料行を自動生成（量は推定値。実物に合わせて調整を）</div>
+      <div class="ai-row">
+        <div><input id="ai-input" placeholder="例：生黒糖カフェラテ。牛乳150ml、エスプレッソ豆18g、生黒糖シロップ20ml、カップ1個"></div>
+        <div><button class="btn-ghost" id="ai-btn" onclick="aiParse()">AIで分解</button></div>
+      </div>
+      <div class="ai-note" id="ai-note"></div>
+    </div>
+    <div class="row2">
+      <div><label>商品名</label><input id="r-name" placeholder="例：生黒糖カフェラテ"></div>
+      <div><label>売価(税抜・円)</label><input id="r-price" type="number" placeholder="500"></div>
+    </div>
+    <div class="grid-recipe">
+      <div><label>材料 / 仕込み品を選ぶ</label><select id="r-mat"></select></div>
+      <div><label>使用量</label><input id="r-amt" type="number" placeholder="150"></div>
+      <div><button class="btn-primary" onclick="addLine()">行追加</button></div>
+    </div>
+    <table><thead><tr><th>材料</th><th>使用量</th><th>単価</th><th>金額</th><th></th></tr></thead><tbody id="recipe-body"></tbody></table>
+    <div id="recipe-empty" class="empty">レシピ行がありません。</div>
+    <div class="row2" style="margin-top:16px"><div><label>提供作業時間(分) — このドリンクを作って出すまでの手間（任意）</label><input id="r-min" type="number" value="0" oninput="calc()"></div><div></div></div>
+    <div class="row2"><div><label>ロス率(%) — 廃棄・こぼれ等の上乗せ（任意）</label><input id="r-loss" type="number" value="0" oninput="calc()"></div><div></div></div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>原価・粗利</h2></div>
+    <div class="results">
+      <div class="card hero"><div class="k">1杯あたり原価（労務込）</div><div class="v"><span id="res-cost">0</span><span class="u">円</span></div></div>
+      <div class="card"><div class="k">原価率</div><div class="v"><span id="res-ratio">—</span><span class="u">%</span></div></div>
+      <div class="card"><div class="k">粗利額</div><div class="v"><span id="res-profit">0</span><span class="u">円</span></div></div>
+      <div class="card"><div class="k">粗利率</div><div class="v"><span id="res-margin">—</span><span class="u">%</span></div></div>
+    </div>
+    <div class="breakdown" id="cost-breakdown"></div>
+    <div class="toolbar">
+      <button class="btn-primary" onclick="saveRecipe()">この商品を一覧に保存</button>
+      <button class="btn-ghost" onclick="copyTSV()">スプレッドシート用にコピー</button>
+      <button class="btn-ghost" onclick="downloadCSV()">CSVダウンロード</button>
+      <button class="btn-ghost" onclick="clearRecipe()">レシピをクリア</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>保存した商品一覧</h2></div>
+    <table><thead><tr><th>商品名</th><th>売価</th><th>原価</th><th>原価率</th><th>粗利</th><th>粗利率</th><th></th></tr></thead><tbody id="saved-body"></tbody></table>
+    <div id="saved-empty" class="empty">保存した商品はまだありません。</div>
+    <div class="toolbar">
+      <button class="btn-ghost" onclick="copyAllTSV()">一覧をまとめてコピー</button>
+      <button class="btn-ghost" onclick="downloadAllCSV()">一覧をCSVダウンロード</button>
+    </div>
+    <div class="hint" style="margin-top:14px">※「一覧に保存」しただけではスプレッドシートに反映されません。上部の<b>「スプレッドシートに保存」</b>を押すと確定します。</div>
+  </section>
+
+  <section style="background:var(--panel2)">
+    <div class="hint" style="font-weight:700;color:var(--ink);margin-bottom:8px">AI入力補助について（任意）</div>
+    <div class="hint" style="margin-bottom:10px">手入力だけでも全機能が使えます。AI分解を使う場合のみAnthropic APIキーを設定（このブラウザにのみ保存）。2人で使うため、共有運用なら手入力前提を推奨します。</div>
+    <div class="ai-row">
+      <div><input id="apikey" type="password" placeholder="sk-ant-... （任意）"></div>
+      <div><button class="btn-ghost" onclick="saveKey()">キーを保存</button></div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== 状態 ===== */
+let materials=[],preps=[],prepLines=[],recipe=[],saved=[],midSeq=1,pidSeq=1;
+let GAS_URL=localStorage.getItem('possible_gas_url')||'';
+let lastLoadedRev=null;   // 読み込んだ時点のリビジョン（競合検知用）
+let dirty=false;
+
+const yen=n=>Math.round(n).toLocaleString('ja-JP');
+const yen2=n=>(Math.round(n*100)/100).toLocaleString('ja-JP');
+const wage=()=>parseFloat(document.getElementById('wage').value)||0;
+function toast(m,err){const t=document.getElementById('toast');t.textContent=m;t.className='toast show'+(err?' err':'');clearTimeout(t._t);t._t=setTimeout(()=>t.className='toast',2400);}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+/* ===== 同期状態表示 ===== */
+function setSync(state,text){
+  const dot=document.getElementById('sync-dot'),t=document.getElementById('sync-text');
+  dot.className='dot '+state;t.textContent=text;
+}
+function markDirty(){dirty=true;if(GAS_URL)setSync('dirty','未保存の変更があります');}
+function markClean(rev){dirty=false;lastLoadedRev=rev;if(GAS_URL)setSync('clean','保存済み（最新と同期）');}
+
+/* ===== GAS URL ===== */
+function saveGasUrl(){
+  const u=document.getElementById('gas-url').value.trim();
+  if(!u.startsWith('https://script.google.com/')){toast('GASのexec URLを貼ってください',true);return;}
+  GAS_URL=u;localStorage.setItem('possible_gas_url',u);
+  document.getElementById('setup-box').style.display='none';
+  document.getElementById('syncbar').style.display='flex';
+  loadFromSheet();
+}
+
+/* ===== サーバ通信 ===== */
+async function apiGet(){
+  const res=await fetch(GAS_URL+'?action=load',{method:'GET'});
+  return await res.json();
+}
+async function apiPost(payload){
+  // text/plain にして preflight を避ける（GASの定番）
+  const res=await fetch(GAS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+  return await res.json();
+}
+async function loadFromSheet(){
+  if(!GAS_URL)return;
+  const btn=document.getElementById('btn-reload');btn.innerHTML='<span class="spinner dark"></span>読込中';btn.disabled=true;
+  try{
+    const d=await apiGet();
+    materials=d.materials||[];preps=d.preps||[];saved=d.saved||[];
+    midSeq=d.midSeq||nextSeq(materials);pidSeq=d.pidSeq||nextSeq(preps);
+    if(d.wage!=null)document.getElementById('wage').value=d.wage;
+    renderAll();markClean(d.rev||null);
+    toast('最新を読み込みました');
+  }catch(e){toast('読み込みに失敗。GASのURLや公開設定を確認してください',true);console.error(e);setSync('off','接続エラー');}
+  finally{btn.innerHTML='最新を読み込む';btn.disabled=false;}
+}
+async function saveToSheet(){
+  if(!GAS_URL){toast('先にGASのURLを設定してください',true);return;}
+  const btn=document.getElementById('btn-save');btn.innerHTML='<span class="spinner"></span>保存中';btn.disabled=true;
+  try{
+    // 競合チェック：現在のサーバrevが、読み込んだ時点と違えば警告
+    const cur=await apiGet();
+    if(lastLoadedRev!=null && cur.rev!=null && cur.rev!==lastLoadedRev){
+      const ok=confirm('別の端末（もう一人）が、あなたが読み込んだ後にデータを更新しています。\n\nこのまま保存すると相手の変更が上書きされる可能性があります。\n\n「キャンセル」して『最新を読み込む』で取り込むことを推奨します。\n\nそれでも上書き保存しますか？');
+      if(!ok){btn.innerHTML='スプレッドシートに保存';btn.disabled=false;return;}
+    }
+    const payload={action:'save',materials,preps,saved,midSeq,pidSeq,wage:document.getElementById('wage').value};
+    const r=await apiPost(payload);
+    markClean(r.rev||null);
+    toast('スプレッドシートに保存しました');
+  }catch(e){toast('保存に失敗しました',true);console.error(e);}
+  finally{btn.innerHTML='スプレッドシートに保存';btn.disabled=false;}
+}
+function nextSeq(arr){return (arr.reduce((m,x)=>Math.max(m,x.id||0),0))+1;}
+
+/* ===== 材料 ===== */
+function addMaterial(){
+  const name=document.getElementById('m-name').value.trim();
+  const price=parseFloat(document.getElementById('m-price').value);
+  const qty=parseFloat(document.getElementById('m-qty').value);
+  const unit=document.getElementById('m-unit').value;
+  if(!name||!(price>=0)||!(qty>0)){toast('材料名・価格・購入量を入力してください',true);return;}
+  materials.push({id:midSeq++,name,price,qty,unit,perUnit:price/qty});
+  document.getElementById('m-name').value='';document.getElementById('m-price').value='';document.getElementById('m-qty').value='';
+  renderMaterials();refreshSelectors();markDirty();
+}
+function delMaterial(id){
+  materials=materials.filter(m=>m.id!==id);
+  prepLines=prepLines.filter(l=>l.matId!==id);
+  recipe=recipe.filter(r=>!(r.refType==='mat'&&r.refId===id));
+  renderMaterials();renderPrepLines();renderRecipe();refreshSelectors();calc();markDirty();
+}
+function renderMaterials(){
+  const b=document.getElementById('mat-body');
+  document.getElementById('mat-empty').style.display=materials.length?'none':'block';
+  b.innerHTML=materials.map(m=>`<tr class="mat-row"><td>${esc(m.name)}</td><td class="num">${yen(m.price)}円</td><td class="num">${m.qty}${m.unit}</td><td class="num">${yen2(m.perUnit)}円/${m.unit}</td><td class="num"><button class="btn-x" onclick="delMaterial(${m.id})">削除</button></td></tr>`).join('');
+}
+function refreshSelectors(){
+  const matOpts=materials.length?materials.map(m=>`<option value="mat:${m.id}">${esc(m.name)}（${yen2(m.perUnit)}円/${m.unit}）</option>`).join(''):'';
+  document.getElementById('p-mat').innerHTML=matOpts||'<option value="">材料を先に登録してください</option>';
+  const prepOpts=preps.map(p=>`<option value="prep:${p.id}">▷ ${esc(p.name)}（${yen2(p.perUnit)}円/${p.unit}）</option>`).join('');
+  document.getElementById('r-mat').innerHTML=(matOpts+prepOpts)||'<option value="">材料を先に登録してください</option>';
+}
+
+/* ===== 仕込み品 ===== */
+function addPrepLine(){
+  const v=document.getElementById('p-mat').value;const amt=parseFloat(document.getElementById('p-amt').value);
+  if(!v){toast('材料を登録・選択してください',true);return;}
+  const matId=parseInt(v.split(':')[1]);const m=materials.find(x=>x.id===matId);
+  if(!m){toast('材料が見つかりません',true);return;}if(!(amt>0)){toast('使用量を入力してください',true);return;}
+  prepLines.push({matId,name:m.name,amount:amt,unit:m.unit,perUnit:m.perUnit});
+  document.getElementById('p-amt').value='';renderPrepLines();
+}
+function delPrepLine(i){prepLines.splice(i,1);renderPrepLines();}
+function renderPrepLines(){
+  const b=document.getElementById('prep-line-body');
+  document.getElementById('prep-line-empty').style.display=prepLines.length?'none':'block';
+  b.innerHTML=prepLines.map((l,i)=>`<tr><td>${esc(l.name)}</td><td class="num">${l.amount}${l.unit}</td><td class="num">${yen2(l.amount*l.perUnit)}円</td><td class="num"><button class="btn-x" onclick="delPrepLine(${i})">削除</button></td></tr>`).join('');
+  const matCost=prepLines.reduce((s,l)=>s+l.amount*l.perUnit,0);
+  const min=parseFloat(document.getElementById('p-min').value)||0;const labor=min/60*wage();
+  const yld=parseFloat(document.getElementById('p-yield').value)||0;const unit=document.getElementById('p-unit').value;
+  const total=matCost+labor;const per=yld>0?total/yld:0;
+  document.getElementById('prep-preview').innerHTML=`材料費 ${yen2(matCost)}円 ＋ 労務費 ${yen2(labor)}円（${min}分）＝ 総コスト <b>${yen2(total)}円</b>`+(yld>0?` ÷ ${yld}${unit} ＝ <b style="color:var(--teal)">${yen2(per)}円/${unit}</b>`:'（できあがり量を入れると単価が出ます）');
+}
+['p-min','p-yield'].forEach(id=>document.getElementById(id).addEventListener('input',renderPrepLines));
+document.getElementById('p-unit').addEventListener('change',renderPrepLines);
+function savePrep(){
+  const name=document.getElementById('p-name').value.trim();
+  const yld=parseFloat(document.getElementById('p-yield').value);
+  const unit=document.getElementById('p-unit').value;const min=parseFloat(document.getElementById('p-min').value)||0;
+  if(!name){toast('仕込み品名を入力してください',true);return;}
+  if(!(yld>0)){toast('できあがり量を入力してください',true);return;}
+  if(!prepLines.length){toast('材料を1つ以上追加してください',true);return;}
+  const matCost=prepLines.reduce((s,l)=>s+l.amount*l.perUnit,0);
+  const laborCost=min/60*wage();const total=matCost+laborCost;const perUnit=total/yld;
+  preps.push({id:pidSeq++,name,unit,yield:yld,minutes:min,lines:[...prepLines],matCost,laborCost,total,perUnit});
+  clearPrep();renderPreps();refreshSelectors();markDirty();toast('仕込み品を登録しました（保存ボタンで確定）');
+}
+function clearPrep(){prepLines=[];document.getElementById('p-name').value='';document.getElementById('p-yield').value='';document.getElementById('p-min').value='';renderPrepLines();}
+function delPrep(id){
+  preps=preps.filter(p=>p.id!==id);
+  recipe=recipe.filter(r=>!(r.refType==='prep'&&r.refId===id));
+  renderPreps();renderRecipe();refreshSelectors();calc();markDirty();
+}
+function renderPreps(){
+  const b=document.getElementById('prep-body');
+  document.getElementById('prep-empty').style.display=preps.length?'none':'block';
+  b.innerHTML=preps.map(p=>`<tr><td>${esc(p.name)}<span class="tag-prep">${p.yield}${p.unit}/回</span></td><td class="num">${yen2(p.matCost)}円</td><td class="num">${yen2(p.laborCost)}円</td><td class="num">${yen2(p.total)}円</td><td class="num">${yen2(p.perUnit)}円/${p.unit}</td><td class="num"><button class="btn-x" onclick="delPrep(${p.id})">削除</button></td></tr>`).join('');
+}
+
+/* ===== 販売レシピ ===== */
+function addLine(){
+  const v=document.getElementById('r-mat').value;const amt=parseFloat(document.getElementById('r-amt').value);
+  if(!v){toast('材料を選択してください',true);return;}
+  const [type,idStr]=v.split(':');const id=parseInt(idStr);
+  let ref=type==='mat'?materials.find(x=>x.id===id):preps.find(x=>x.id===id);
+  if(!ref){toast('対象が見つかりません',true);return;}if(!(amt>0)){toast('使用量を入力してください',true);return;}
+  recipe.push({refId:id,refType:type,name:ref.name,amount:amt,unit:ref.unit,perUnit:ref.perUnit});
+  document.getElementById('r-amt').value='';renderRecipe();calc();
+}
+function delLine(i){recipe.splice(i,1);renderRecipe();calc();}
+function renderRecipe(){
+  const b=document.getElementById('recipe-body');
+  document.getElementById('recipe-empty').style.display=recipe.length?'none':'block';
+  b.innerHTML=recipe.map((r,i)=>`<tr><td>${r.refType==='prep'?'▷ ':''}${esc(r.name)}</td><td class="num">${r.amount}${r.unit}</td><td class="num">${yen2(r.perUnit)}円/${r.unit}</td><td class="num">${yen2(r.amount*r.perUnit)}円</td><td class="num"><button class="btn-x" onclick="delLine(${i})">削除</button></td></tr>`).join('');
+}
+function calcParts(){
+  const matBase=recipe.reduce((s,r)=>s+r.amount*r.perUnit,0);
+  const loss=parseFloat(document.getElementById('r-loss').value)||0;
+  const matCost=matBase*(1+loss/100);
+  const serveMin=parseFloat(document.getElementById('r-min').value)||0;
+  const serveLabor=serveMin/60*wage();
+  return {matCost,serveLabor,total:matCost+serveLabor};
+}
+function calc(){
+  const {matCost,serveLabor,total}=calcParts();
+  const price=parseFloat(document.getElementById('r-price').value)||0;
+  document.getElementById('res-cost').textContent=yen2(total);
+  if(price>0){
+    const ratio=total/price*100,profit=price-total,margin=profit/price*100;
+    const rEl=document.getElementById('res-ratio');
+    rEl.textContent=yen2(ratio);rEl.className=ratio<=30?'ratio-good':ratio<=45?'ratio-warn':'ratio-bad';
+    document.getElementById('res-profit').textContent=yen2(profit);
+    document.getElementById('res-margin').textContent=yen2(margin);
+  }else{
+    document.getElementById('res-ratio').textContent='—';
+    document.getElementById('res-profit').textContent=yen2(-total);
+    document.getElementById('res-margin').textContent='—';
+  }
+  document.getElementById('cost-breakdown').innerHTML=`内訳：材料・仕込み ${yen2(matCost)}円 ＋ 提供労務 ${yen2(serveLabor)}円 ＝ <b>${yen2(total)}円</b><br><span style="color:var(--muted)">※仕込み品の単価には、その仕込みにかかった労務費が既に含まれています。</span>`;
+}
+document.getElementById('r-price').addEventListener('input',calc);
+function currentSummary(){
+  const {total}=calcParts();const price=parseFloat(document.getElementById('r-price').value)||0;
+  const name=document.getElementById('r-name').value.trim()||'(無名)';
+  const ratio=price>0?total/price*100:0,profit=price-total,margin=price>0?profit/price*100:0;
+  return {name,price,cost:total,ratio,profit,margin};
+}
+function saveRecipe(){if(!recipe.length){toast('レシピが空です',true);return;}saved.push(currentSummary());renderSaved();markDirty();toast('一覧に追加しました（保存ボタンで確定）');}
+function renderSaved(){
+  const b=document.getElementById('saved-body');
+  document.getElementById('saved-empty').style.display=saved.length?'none':'block';
+  b.innerHTML=saved.map((s,i)=>`<tr><td>${esc(s.name)}</td><td class="num">${yen(s.price)}円</td><td class="num">${yen2(s.cost)}円</td><td class="num">${s.price>0?yen2(s.ratio)+'%':'—'}</td><td class="num">${yen2(s.profit)}円</td><td class="num">${s.price>0?yen2(s.margin)+'%':'—'}</td><td class="num"><button class="btn-x" onclick="delSaved(${i})">削除</button></td></tr>`).join('');
+}
+function delSaved(i){saved.splice(i,1);renderSaved();markDirty();}
+function clearRecipe(){recipe=[];document.getElementById('r-name').value='';document.getElementById('r-price').value='';document.getElementById('r-min').value='0';document.getElementById('r-loss').value='0';renderRecipe();calc();}
+
+function renderAll(){renderMaterials();renderPrepLines();renderPreps();renderRecipe();renderSaved();refreshSelectors();calc();}
+
+/* ===== 書き出し ===== */
+function recipeRows(){
+  const rows=[['商品名','材料/仕込み','使用量','単位','単価(円)','金額(円)']];
+  const name=document.getElementById('r-name').value.trim()||'(無名)';
+  recipe.forEach(r=>rows.push([name,(r.refType==='prep'?'▷':'')+r.name,r.amount,r.unit,Math.round(r.perUnit*100)/100,Math.round(r.amount*r.perUnit*100)/100]));
+  const p=calcParts();const s=currentSummary();
+  rows.push([name,'【材料・仕込み計】','','','',Math.round(p.matCost*100)/100]);
+  rows.push([name,'【提供労務】','','','',Math.round(p.serveLabor*100)/100]);
+  rows.push([name,'【合計原価】','','','',Math.round(s.cost*100)/100]);
+  rows.push([name,'【売価】','','','',s.price]);
+  rows.push([name,'【原価率%】','','','',Math.round(s.ratio*100)/100]);
+  rows.push([name,'【粗利%】','','','',Math.round(s.margin*100)/100]);
+  return rows;
+}
+function copyTSV(){if(!recipe.length){toast('レシピが空です',true);return;}navigator.clipboard.writeText(recipeRows().map(r=>r.join('\t')).join('\n')).then(()=>toast('コピーしました'));}
+function downloadCSV(){if(!recipe.length){toast('レシピが空です',true);return;}dl(recipeRows(),(document.getElementById('r-name').value.trim()||'recipe')+'_原価.csv');}
+function summaryRows(){const rows=[['商品名','売価(円)','原価(円)','原価率(%)','粗利(円)','粗利率(%)']];saved.forEach(s=>rows.push([s.name,s.price,Math.round(s.cost*100)/100,Math.round(s.ratio*100)/100,Math.round(s.profit*100)/100,Math.round(s.margin*100)/100]));return rows;}
+function copyAllTSV(){if(!saved.length){toast('保存済みがありません',true);return;}navigator.clipboard.writeText(summaryRows().map(r=>r.join('\t')).join('\n')).then(()=>toast('一覧をコピーしました'));}
+function downloadAllCSV(){if(!saved.length){toast('保存済みがありません',true);return;}dl(summaryRows(),'POSSIBLE_原価一覧.csv');}
+function dl(rows,fname){
+  const csv='\uFEFF'+rows.map(r=>r.map(c=>{const s=String(c);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();toast('ダウンロードしました');
+}
+
+/* ===== AI補助 ===== */
+function saveKey(){const k=document.getElementById('apikey').value.trim();if(k){localStorage.setItem('possible_apikey',k);toast('APIキーを保存しました');}else{localStorage.removeItem('possible_apikey');toast('APIキーを削除しました');}updateAiNote();}
+function updateAiNote(){const has=!!localStorage.getItem('possible_apikey');document.getElementById('ai-note').textContent=has?'※AI補助：有効':'※AI補助は未設定（最下部でキー設定）。手入力ですべて使えます。';}
+async function aiParse(){
+  const key=localStorage.getItem('possible_apikey');
+  if(!key){toast('先に最下部でAPIキーを設定してください（手入力は不要）',true);return;}
+  const text=document.getElementById('ai-input').value.trim();
+  if(!text){toast('レシピを文章で入力してください',true);return;}
+  const btn=document.getElementById('ai-btn');btn.innerHTML='<span class="spinner dark"></span>分解中';btn.disabled=true;
+  try{
+    const sys=`あなたはカフェの原価計算アシスタントです。入力された商品説明から材料・使用量・単位を抽出しJSONだけ返す。前置きやMarkdown不要。形式:{"product":"商品名","items":[{"name":"材料名","amount":数値,"unit":"g|ml|個|枚|杯"}]} 単位はg/ml/個/枚/杯に正規化。不明な量は妥当な推定値。`;
+    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:sys,messages:[{role:"user",content:text}]})});
+    const data=await res.json();
+    let out=(data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim().replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(out);
+    if(parsed.product)document.getElementById('r-name').value=parsed.product;
+    let added=0;
+    (parsed.items||[]).forEach(it=>{
+      let pp=preps.find(x=>x.name===it.name);let m,type;
+      if(pp){m=pp;type='prep';}
+      else{m=materials.find(x=>x.name===it.name);type='mat';if(!m){m={id:midSeq++,name:it.name,price:0,qty:1,unit:it.unit||'g',perUnit:0};materials.push(m);}}
+      recipe.push({refId:m.id,refType:type,name:m.name,amount:it.amount||0,unit:m.unit,perUnit:m.perUnit});added++;
+    });
+    renderMaterials();renderRecipe();refreshSelectors();calc();markDirty();
+    toast(added+'件を追加。材料マスタで価格を入れてください');
+  }catch(e){toast('AI分解に失敗。手入力をお使いください',true);console.error(e);}
+  finally{btn.innerHTML='AIで分解';btn.disabled=false;}
+}
+
+/* ===== 離脱警告 ===== */
+window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+
+/* ===== init ===== */
+function init(){
+  updateAiNote();
+  if(GAS_URL){
+    document.getElementById('setup-box').style.display='none';
+    document.getElementById('syncbar').style.display='flex';
+    loadFromSheet();
+  }else{
+    renderAll();
+  }
+}
+init();
+</script>
+</body>
+</html>
