@@ -57,10 +57,7 @@
   .card .v{font-size:27px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums}
   .card .v .u{font-size:14px;color:var(--muted);margin-left:3px}
   .ratio-good{color:var(--good)!important}.ratio-warn{color:var(--warn)!important}.ratio-bad{color:var(--bad)!important}
-  .ai-box{background:var(--navy-tint);border:1px solid #d9e1eb;border-radius:8px;padding:16px;margin-bottom:18px}
-  .ai-box .hint{margin-bottom:10px;color:var(--navy);font-weight:600}
   .ai-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
-  .ai-note{font-size:12px;color:var(--muted);margin-top:8px}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:11px 22px;border-radius:8px;font-size:13px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;z-index:50;box-shadow:0 6px 20px rgba(28,36,51,.2);max-width:90%;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .toast.err{background:var(--bad)}
@@ -164,14 +161,6 @@
 
   <section>
     <div class="sec-head"><span class="sec-num">03</span><h2>販売レシピ</h2></div>
-    <div class="ai-box">
-      <div class="hint">AI入力補助：商品名やレシピを文章で書くと材料行を自動生成（量は推定値。実物に合わせて調整を）</div>
-      <div class="ai-row">
-        <div><input id="ai-input" placeholder="例：生黒糖カフェラテ。牛乳150ml、エスプレッソ豆18g、生黒糖シロップ20ml、カップ1個"></div>
-        <div><button class="btn-ghost" id="ai-btn" onclick="aiParse()">AIで分解</button></div>
-      </div>
-      <div class="ai-note" id="ai-note"></div>
-    </div>
     <div class="row2">
       <div><label>商品名</label><input id="r-name" placeholder="例：生黒糖カフェラテ"></div>
       <div><label>売価(税抜・円)</label><input id="r-price" type="number" placeholder="500"></div>
@@ -216,12 +205,8 @@
   </section>
 
   <section style="background:var(--panel2)">
-    <div class="hint" style="font-weight:700;color:var(--ink);margin-bottom:8px">AI入力補助について（任意）</div>
-    <div class="hint" style="margin-bottom:10px">手入力だけでも全機能が使えます。AI分解を使う場合のみAnthropic APIキーを設定（このブラウザにのみ保存）。2人で使うため、共有運用なら手入力前提を推奨します。</div>
-    <div class="ai-row">
-      <div><input id="apikey" type="password" placeholder="sk-ant-... （任意）"></div>
-      <div><button class="btn-ghost" onclick="saveKey()">キーを保存</button></div>
-    </div>
+    <div class="hint" style="font-weight:700;color:var(--ink);margin-bottom:8px">データについて</div>
+    <div class="hint" style="margin:0">すべてのデータはGoogleスプレッドシートに保存されます。スプレッドシートを直接開けば生データの確認・バックアップができます。作業前に「最新を読み込む」、区切りで「スプレッドシートに保存」を押す運用です。</div>
   </section>
 </div>
 
@@ -458,41 +443,11 @@ function dl(rows,fname){
   const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;a.click();toast('ダウンロードしました');
 }
 
-/* ===== AI補助 ===== */
-function saveKey(){const k=document.getElementById('apikey').value.trim();if(k){localStorage.setItem('possible_apikey',k);toast('APIキーを保存しました');}else{localStorage.removeItem('possible_apikey');toast('APIキーを削除しました');}updateAiNote();}
-function updateAiNote(){const has=!!localStorage.getItem('possible_apikey');document.getElementById('ai-note').textContent=has?'※AI補助：有効':'※AI補助は未設定（最下部でキー設定）。手入力ですべて使えます。';}
-async function aiParse(){
-  const key=localStorage.getItem('possible_apikey');
-  if(!key){toast('先に最下部でAPIキーを設定してください（手入力は不要）',true);return;}
-  const text=document.getElementById('ai-input').value.trim();
-  if(!text){toast('レシピを文章で入力してください',true);return;}
-  const btn=document.getElementById('ai-btn');btn.innerHTML='<span class="spinner dark"></span>分解中';btn.disabled=true;
-  try{
-    const sys=`あなたはカフェの原価計算アシスタントです。入力された商品説明から材料・使用量・単位を抽出しJSONだけ返す。前置きやMarkdown不要。形式:{"product":"商品名","items":[{"name":"材料名","amount":数値,"unit":"g|ml|個|枚|杯"}]} 単位はg/ml/個/枚/杯に正規化。不明な量は妥当な推定値。`;
-    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:sys,messages:[{role:"user",content:text}]})});
-    const data=await res.json();
-    let out=(data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim().replace(/```json|```/g,'').trim();
-    const parsed=JSON.parse(out);
-    if(parsed.product)document.getElementById('r-name').value=parsed.product;
-    let added=0;
-    (parsed.items||[]).forEach(it=>{
-      let pp=preps.find(x=>x.name===it.name);let m,type;
-      if(pp){m=pp;type='prep';}
-      else{m=materials.find(x=>x.name===it.name);type='mat';if(!m){m={id:midSeq++,name:it.name,price:0,qty:1,unit:it.unit||'g',perUnit:0};materials.push(m);}}
-      recipe.push({refId:m.id,refType:type,name:m.name,amount:it.amount||0,unit:m.unit,perUnit:m.perUnit});added++;
-    });
-    renderMaterials();renderRecipe();refreshSelectors();calc();markDirty();
-    toast(added+'件を追加。材料マスタで価格を入れてください');
-  }catch(e){toast('AI分解に失敗。手入力をお使いください',true);console.error(e);}
-  finally{btn.innerHTML='AIで分解';btn.disabled=false;}
-}
-
 /* ===== 離脱警告 ===== */
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
 
 /* ===== init ===== */
 function init(){
-  updateAiNote();
   if(GAS_URL){
     document.getElementById('setup-box').style.display='none';
     document.getElementById('syncbar').style.display='flex';
